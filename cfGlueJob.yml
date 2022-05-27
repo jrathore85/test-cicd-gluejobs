@@ -1,0 +1,51 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Conditions:
+  IsEnvDEV: !Equals 
+    - !Ref 'AWS::AccountId'
+    - '314690310770'
+  IsEnvQA: !Equals 
+    - !Ref 'AWS::AccountId'
+    - '642687624769'
+  IsEnvPROD: !Equals 
+    - !Ref 'AWS::AccountId'
+    - '460758253413'
+Parameters:
+  DevPrefix:
+    Type: String
+    Default: d
+  QAPrefix:
+    Type: String
+    Default: qa
+  ProdPrefix:
+    Type: String
+    Default: p
+  GlueIAMRoleName:
+    Type: String
+    Default: 'Glue-iam-role'
+  JobName:
+    Type: String
+    Default: 'my-job1'   
+  S3Path:
+    Type: String
+    Default: 'aws-glue-scripts'     
+    
+Resources:
+  CFNRGlueETL:
+    Type: AWS::Glue::Job   
+    Properties:
+      Role: !Sub
+          - '${ePrefix}-${GlueIAMRoleName}'
+          - { ePrefix: !If [IsEnvPROD,!Ref ProdPrefix,!If [IsEnvQA,!Ref QAPrefix,!Ref DevPrefix]] }
+      Description: My Glue job 1
+      Command:   
+        Name: glueetl  
+        ScriptLocation: !Sub 
+          - 's3://s3-${ePrefix}-${S3Path}/${JobName}/${JobName}'
+          - { ePrefix: !If [IsEnvDEV,!Ref DevPrefix,!If [IsEnvQA,!Ref QAPrefix,!Ref ProdPrefix]] }
+      AllocatedCapacity: 10  
+      ExecutionProperty:   
+        MaxConcurrentRuns: 1        
+      Name: !Sub ${JobName}
+      DefaultArguments:
+        '--enable-glue-datacatalog': ''
+      GlueVersion: 2.0
